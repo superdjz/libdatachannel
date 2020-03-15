@@ -67,9 +67,8 @@ void SctpTransport::Cleanup() { usrsctp_finish(); }
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower), mPort(port), mSendQueue(0, message_size_func),
-      mBufferedAmountCallback(std::move(bufferedAmountCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)), mState(State::Disconnected) {
+    : Transport(lower, std::move(stateChangeCallback)), mPort(port),
+      mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing SCTP transport";
@@ -165,8 +164,6 @@ SctpTransport::~SctpTransport() {
 	usrsctp_deregister_address(this);
 }
 
-SctpTransport::State SctpTransport::state() const { return mState; }
-
 void SctpTransport::stop() {
 	Transport::stop();
 	onRecv(nullptr);
@@ -248,7 +245,7 @@ void SctpTransport::reset(unsigned int stream) {
 	srs.srs_stream_list[0] = uint16_t(stream);
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len) == 0) {
 		mWrittenCondition.wait_for(lock, 1000ms,
-		                           [&]() { return mWritten || mState != State::Connected; });
+		                           [&]() { return mWritten || state() != State::Connected; });
 	} else {
 		PLOG_WARNING << "SCTP reset stream " << stream << " failed, errno=" << errno;
 	}
@@ -260,7 +257,7 @@ void SctpTransport::incoming(message_ptr message) {
 	// to be sent on our side (i.e. the local INIT) before proceeding.
 	{
 		std::unique_lock lock(mWriteMutex);
-		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || mState != State::Connected; });
+		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() != State::Connected; });
 	}
 
 	if (!message) {
@@ -272,11 +269,6 @@ void SctpTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	usrsctp_conninput(this, message->data(), message->size(), 0);
-}
-
-void SctpTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(state);
 }
 
 bool SctpTransport::trySendQueue() {
@@ -293,7 +285,7 @@ bool SctpTransport::trySendQueue() {
 
 bool SctpTransport::trySendMessage(message_ptr message) {
 	// Requires mSendMutex to be locked
-	if (mState != State::Connected)
+	if (state() != State::Connected)
 		return false;
 
 	PLOG_VERBOSE << "SCTP try send size=" << message->size();
@@ -521,7 +513,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			PLOG_INFO << "SCTP connected";
 			changeState(State::Connected);
 		} else {
-			if (mState == State::Connecting) {
+			if (state() == State::Connecting) {
 				PLOG_ERROR << "SCTP connection failed";
 				changeState(State::Failed);
 			} else {

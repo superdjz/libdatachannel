@@ -32,7 +32,11 @@ using namespace std::placeholders;
 
 class Transport {
 public:
-	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {
+	enum class State { Disconnected, Connecting, Connected, Completed, Failed };
+	using state_callback = std::function<void(State state)>;
+
+	Transport(std::shared_ptr<Transport> lower = nullptr, state_callback callback = nullptr)
+	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {
 		if (mLower)
 			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
 	}
@@ -46,9 +50,14 @@ public:
 	virtual bool send(message_ptr message) = 0;
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
+	State state() const { return mState; }
 
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
+	void changeState(State state) {
+		if (mState.exchange(state) != state)
+			mStateChangeCallback(state);
+	}
 
 	virtual void incoming(message_ptr message) = 0;
 	virtual bool outgoing(message_ptr message) {
@@ -60,7 +69,10 @@ protected:
 
 private:
 	std::shared_ptr<Transport> mLower;
+	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<message_ptr> mRecvCallback;
+
+	std::atomic<State> mState = State::Disconnected;
 };
 
 } // namespace rtc

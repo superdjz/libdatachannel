@@ -53,7 +53,8 @@ static bool check_gnutls(int ret, const string &message = "GnuTLS error") {
 
 namespace rtc {
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host) : Transport(lower) {
+TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
+    : Transport(lower, std::move(callback)) {
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
@@ -260,7 +261,8 @@ void TlsTransport::GlobalInit() {
 	}
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host) : Transport(lower) {
+TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
+    : Transport(lower, std::move(callback)) {
 
 	PLOG_DEBUG << "Initializing TLS transport (OpenSSL)";
 	GlobalInit();

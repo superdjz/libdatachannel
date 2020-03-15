@@ -62,11 +62,9 @@ void DtlsTransport::Cleanup() {
 }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
-                             verifier_callback verifierCallback,
-                             state_callback stateChangeCallback)
-    : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
-      mVerifierCallback(std::move(verifierCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
+    : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
+      mVerifierCallback(std::move(verifierCallback)) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
@@ -112,8 +110,6 @@ DtlsTransport::~DtlsTransport() {
 	gnutls_deinit(mSession);
 }
 
-DtlsTransport::State DtlsTransport::state() const { return mState; }
-
 void DtlsTransport::stop() {
 	Transport::stop();
 
@@ -126,7 +122,7 @@ void DtlsTransport::stop() {
 }
 
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || mState != State::Connected)
+	if (!message || state() != State::Connected)
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -150,11 +146,6 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
-}
-
-void DtlsTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {
@@ -358,9 +349,8 @@ void DtlsTransport::Cleanup() {
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
-      mVerifierCallback(std::move(verifierCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
+    : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
+      mVerifierCallback(std::move(verifierCallback)) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
@@ -433,10 +423,8 @@ void DtlsTransport::stop() {
 	}
 }
 
-DtlsTransport::State DtlsTransport::state() const { return mState; }
-
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || mState != State::Connected)
+	if (!message || state() != State::Connected)
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -453,11 +441,6 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
-}
-
-void DtlsTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {
@@ -492,7 +475,7 @@ void DtlsTransport::runRecvLoop() {
 					decrypted = make_message(buffer, buffer + ret);
 			}
 
-			if (mState == State::Connecting) {
+			if (state() == State::Connecting) {
 				if (SSL_is_init_finished(mSsl)) {
 					changeState(State::Connected);
 
@@ -516,7 +499,7 @@ void DtlsTransport::runRecvLoop() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
-	if (mState == State::Connected) {
+	if (state() == State::Connected) {
 		PLOG_INFO << "DTLS disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);
