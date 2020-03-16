@@ -464,7 +464,8 @@ void DtlsTransport::runRecvLoop() {
 
 			message_ptr decrypted;
 			if (!mIncomingQueue.empty()) {
-				auto message = *mIncomingQueue.pop();
+				message_ptr message = *mIncomingQueue.pop();
+
 				BIO_write(mInBio, message->data(), message->size());
 
 				int ret = SSL_read(mSsl, buffer, bufferSize);
@@ -492,8 +493,8 @@ void DtlsTransport::runRecvLoop() {
 				}
 			}
 
-			if (ret > 0)
-				recv(make_message(buffer, buffer + ret));
+			if (decrypted)
+				recv(decrypted);
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();

@@ -23,8 +23,6 @@
 #include "include.hpp"
 #include "sctptransport.hpp"
 
-#include <iostream>
-
 namespace rtc {
 
 using namespace std::placeholders;
@@ -50,7 +48,7 @@ void PeerConnection::close() {
 	// Close DataChannels
 	closeDataChannels();
 
-	// Close Transports
+	// Stop Transports
 	for (int i = 0; i < 2; ++i) { // Make sure a transport wasn't spawn behind our back
 		if (auto transport = std::atomic_load(&mSctpTransport))
 			transport->stop();

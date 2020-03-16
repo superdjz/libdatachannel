@@ -26,6 +26,8 @@ using std::to_string;
 
 TcpTransport::TcpTransport(const string &hostname, const string &service, state_callback callback)
     : Transport(nullptr, std::move(callback)), mHostname(hostname), mService(service) {
+
+	PLOG_DEBUG << "Initializing TCP transport";
 	mThread = std::thread(&TcpTransport::runLoop, this);
 }
 
@@ -112,7 +114,10 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 			throw std::runtime_error("Connection failed");
 
 	} catch (...) {
-		close();
+		if (mSock != INVALID_SOCKET) {
+			::closesocket(mSock);
+			mSock = INVALID_SOCKET;
+		}
 		throw;
 	}
 }
@@ -122,6 +127,7 @@ void TcpTransport::close() {
 		::closesocket(mSock);
 		mSock = INVALID_SOCKET;
 	}
+	changeState(State::Disconnected);
 }
 
 bool TcpTransport::trySendQueue() {
@@ -158,14 +164,19 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 void TcpTransport::runLoop() {
 	const size_t bufferSize = 4096;
 
+	changeState(State::Connecting);
+
 	// Connect
 	try {
 		connect(mHostname, mService);
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TCP connect: " << e.what();
+		changeState(State::Failed);
 		return;
 	}
+
+	changeState(State::Connected);
 
 	// Receive loop
 	try {
@@ -186,7 +197,7 @@ void TcpTransport::runLoop() {
 					break; // clean close
 
 				auto *b = reinterpret_cast<byte *>(buffer);
-				incoming(make_message(b, b + ret));
+				incoming(make_message(b, b + len));
 			}
 
 			if (FD_ISSET(mSock, &writefds))
@@ -197,6 +208,7 @@ void TcpTransport::runLoop() {
 	}
 
 	PLOG_INFO << "TCP disconnected";
+	changeState(State::Disconnected);
 	recv(nullptr);
 }
 
