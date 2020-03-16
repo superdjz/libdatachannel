@@ -69,6 +69,7 @@ protected:
 	static int TransportExIndex;
 	static std::mutex GlobalMutex;
 
+	static void GlobalInit();
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
 #endif
