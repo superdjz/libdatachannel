@@ -82,6 +82,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 			mStunService = server.service;
 			jconfig.stun_server_host = mStunHostname.c_str();
 			jconfig.stun_server_port = std::stoul(mStunService);
+			break;
 		}
 	}
 
