@@ -253,7 +253,6 @@ std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		    lower, mHost, mPath, std::bind(&WebSocket::incoming, this, _1), [this](State state) {
 			    switch (state) {
 			    case State::Connected:
-				    PLOG_DEBUG << "WebSocket open";
 				    triggerOpen();
 				    break;
 			    case State::Failed:

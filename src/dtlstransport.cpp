@@ -177,6 +177,7 @@ void DtlsTransport::runRecvLoop() {
 
 	// Receive loop
 	try {
+		PLOG_INFO << "TLS handshake finished";
 		changeState(State::Connected);
 
 		const size_t bufferSize = maxMtu;
@@ -209,7 +210,7 @@ void DtlsTransport::runRecvLoop() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
-	PLOG_INFO << "DTLS disconnected";
+	PLOG_INFO << "DTLS closed";
 	changeState(State::Disconnected);
 	recv(nullptr);
 }
@@ -478,6 +479,7 @@ void DtlsTransport::runRecvLoop() {
 
 			if (state() == State::Connecting) {
 				if (SSL_is_init_finished(mSsl)) {
+					PLOG_INFO << "TLS handshake finished";
 					changeState(State::Connected);
 
 					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
@@ -501,7 +503,7 @@ void DtlsTransport::runRecvLoop() {
 	}
 
 	if (state() == State::Connected) {
-		PLOG_INFO << "DTLS disconnected";
+		PLOG_INFO << "DTLS closed";
 		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
