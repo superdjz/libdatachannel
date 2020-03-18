@@ -19,6 +19,10 @@
 #ifndef RTC_INCLUDE_H
 #define RTC_INCLUDE_H
 
+#ifndef RTC_ENABLE_WEBSOCKET
+#define RTC_ENABLE_WEBSOCKET 1
+#endif
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #ifndef _WIN32_WINNT

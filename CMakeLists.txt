@@ -6,7 +6,7 @@ project (libdatachannel
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_JUICE "Use libjuice instead of libnice" OFF)
-option(ENABLE_WEBSOCKET "Build WebSocket support" OFF)
+option(RTC_ENABLE_WEBSOCKET "Build WebSocket support" ON)
 
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" ON)
@@ -37,7 +37,9 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
+)
 
+set(LIBDATACHANNEL_WEBSOCKET_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.cpp
@@ -88,8 +90,28 @@ endif()
 add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 
-add_library(datachannel SHARED ${LIBDATACHANNEL_SOURCES})
+if (RTC_ENABLE_WEBSOCKET)
+	add_library(datachannel SHARED
+		${LIBDATACHANNEL_SOURCES}
+		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
+	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+		${LIBDATACHANNEL_SOURCES}
+		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
+else()
+	add_library(datachannel SHARED
+		${LIBDATACHANNEL_SOURCES})
+	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+		${LIBDATACHANNEL_SOURCES})
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
+endif()
+
 set_target_properties(datachannel PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
@@ -97,17 +119,13 @@ target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel Threads::Threads Usrsctp::UsrsctpStatic)
-
-add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
-set_target_properties(datachannel-static PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
 
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
+
+target_link_libraries(datachannel Threads::Threads Usrsctp::UsrsctpStatic)
 target_link_libraries(datachannel-static Threads::Threads Usrsctp::UsrsctpStatic)
 
 if(WIN32)
@@ -149,14 +167,6 @@ else()
 	target_link_libraries(datachannel LibNice::LibNice)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=0)
 	target_link_libraries(datachannel-static LibNice::LibNice)
-endif()
-
-if (ENABLE_WEBSOCKET)
-	target_compile_definitions(datachannel PRIVATE ENABLE_WEBSOCKET=1)
-	target_compile_definitions(datachannel-static PRIVATE ENABLE_WEBSOCKET=1)
-else()
-	target_compile_definitions(datachannel PRIVATE ENABLE_WEBSOCKET=0)
-	target_compile_definitions(datachannel-static PRIVATE ENABLE_WEBSOCKET=0)
 endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
