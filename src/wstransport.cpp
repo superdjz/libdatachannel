@@ -70,14 +70,6 @@ void WsTransport::stop() {
 }
 
 bool WsTransport::send(message_ptr message) {
-	if (!message)
-		return false;
-
-	// Call the mutable message overload with a copy
-	return send(std::make_shared<Message>(*message));
-}
-
-bool WsTransport::send(mutable_message_ptr message) {
 	if (!message || state() != State::Connected)
 		return false;
 

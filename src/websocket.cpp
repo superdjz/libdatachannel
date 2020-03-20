@@ -140,7 +140,7 @@ size_t WebSocket::availableAmount() const { return mRecvQueue.amount(); }
 
 void WebSocket::changeState(State state) { mState.exchange(state); }
 
-bool WebSocket::outgoing(mutable_message_ptr message) {
+bool WebSocket::outgoing(message_ptr message) {
 	if (mState != State::Open || !mWsTransport)
 		throw std::runtime_error("WebSocket is not open");
 

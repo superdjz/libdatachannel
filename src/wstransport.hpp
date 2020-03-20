@@ -37,7 +37,6 @@ public:
 
 	void stop() override;
 	bool send(message_ptr message) override;
-	bool send(mutable_message_ptr message);
 
 	void incoming(message_ptr message) override;
 
