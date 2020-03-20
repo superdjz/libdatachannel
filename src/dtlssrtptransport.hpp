@@ -38,9 +38,11 @@ public:
 
 private:
 	void incoming(message_ptr message) override;
+	void postHandshake() override;
+
+	message_callback mRecvCallback;
 
 	srtp_t mSrtp;
-	srtp_policy_t mPolicy;
 };
 
 } // namespace rtc
