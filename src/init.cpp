@@ -20,16 +20,10 @@
 
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
+#include "tls.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
-#endif
-
-#if USE_GNUTLS
-// Nothing to do
-#else
-#include <openssl/err.h>
-#include <openssl/ssl.h>
 #endif
 
 using std::shared_ptr;
@@ -64,9 +58,7 @@ Init::Init() {
 #if USE_GNUTLS
 		// Nothing to do
 #else
-	OPENSSL_init_ssl(0, NULL);
-	SSL_load_error_strings();
-	ERR_load_crypto_strings();
+	openssl::init();
 #endif
 
 	DtlsTransport::Init();
