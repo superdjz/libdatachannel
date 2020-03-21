@@ -19,10 +19,10 @@
 #include "dtlssrtptransport.hpp"
 #include "tls.hpp"
 
+#if RTC_ENABLE_MEDIA
+
 #include <cstring>
 #include <exception>
-
-#include <srtp2/srtp.h>
 
 using std::shared_ptr;
 using std::to_string;
@@ -197,3 +197,5 @@ void DtlsSrtpTransport::postHandshake() {
 }
 
 } // namespace rtc
+
+#endif

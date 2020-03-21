@@ -8,6 +8,7 @@ lib libdatachannel
 	<include>./include/rtc
 	<define>USE_GNUTLS=0
 	<define>USE_JUICE=1
+	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
 	<cxxflags>"`pkg-config --cflags openssl`"
 	<library>/libdatachannel//usrsctp
