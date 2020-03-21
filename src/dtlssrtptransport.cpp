@@ -28,17 +28,31 @@ using std::to_string;
 
 namespace rtc {
 
+std::mutex DtlsSrtpTransport::GlobalMutex;
+int DtlsSrtpTransport::InstancesCount = 0;
+
+void DtlsSrtpTransport::GlobalInit() {
+	std::lock_guard lock(GlobalMutex);
+	if (InstancesCount++ == 0)
+		srtp_init();
+}
+
+void DtlsSrtpTransport::GlobalCleanup() {
+	std::lock_guard lock(GlobalMutex);
+	if (--InstancesCount == 0)
+		srtp_shutdown();
+}
+
 DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate,
                                      verifier_callback verifierCallback,
-                                     message_callback recvCallback,
+                                     message_callback srtpRecvCallback,
                                      state_callback stateChangeCallback)
     : DtlsTransport(lower, certificate, std::move(verifierCallback),
                     std::move(stateChangeCallback)),
-      mRecvCallback(std::move(recvCallback)) {
+      mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
 
-	// TODO: global init
-	srtp_init();
+	GlobalInit();
 
 	PLOG_DEBUG << "Initializing SRTP transport";
 
@@ -56,8 +70,7 @@ DtlsSrtpTransport::~DtlsSrtpTransport() {
 
 	srtp_dealloc(mSrtp);
 
-	// TODO: global cleanup
-	srtp_shutdown();
+	GlobalCleanup();
 }
 
 void DtlsSrtpTransport::stop() {
@@ -102,7 +115,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 	}
 	PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 	message->resize(size);
-	mRecvCallback(message);
+	mSrtpRecvCallback(message);
 }
 
 void DtlsSrtpTransport::postHandshake() {

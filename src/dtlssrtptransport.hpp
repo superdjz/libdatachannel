@@ -29,7 +29,7 @@ namespace rtc {
 class DtlsSrtpTransport final : public DtlsTransport {
 public:
 	DtlsSrtpTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
-	                  verifier_callback verifierCallback, message_callback recvCallback,
+	                  verifier_callback verifierCallback, message_callback srtpRecvCallback,
 	                  state_callback stateChangeCallback);
 	~DtlsSrtpTransport();
 
@@ -40,9 +40,15 @@ private:
 	void incoming(message_ptr message) override;
 	void postHandshake() override;
 
-	message_callback mRecvCallback;
+	message_callback mSrtpRecvCallback;
 
 	srtp_t mSrtp;
+
+	static void GlobalInit();
+	static void GlobalCleanup();
+
+	static std::mutex GlobalMutex;
+	static int InstancesCount;
 };
 
 } // namespace rtc
