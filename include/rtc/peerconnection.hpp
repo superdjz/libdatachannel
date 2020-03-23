@@ -89,6 +89,12 @@ public:
 	void onStateChange(std::function<void(State state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
+	bool hasMedia() const;
+	void sendMedia(const binary &packet);
+	void send(const byte *packet, size_t size);
+
+	void onMedia(std::function<void(const binary &packet)> callback);
+
 private:
 	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
 	std::shared_ptr<DtlsTransport> initDtlsTransport();
@@ -115,6 +121,8 @@ private:
 	void changeState(State state);
 	void changeGatheringState(GatheringState state);
 
+	void outgoingMedia(message_ptr message);
+
 	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;
 
@@ -139,6 +147,7 @@ private:
 	synchronized_callback<const Candidate &> mLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
+	synchronized_callback<const binary &> mMediaCallback;
 };
 
 } // namespace rtc

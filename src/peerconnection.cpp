@@ -220,6 +220,35 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 	mGatheringStateChangeCallback = callback;
 }
 
+bool PeerConnection::hasMedia() const {
+	auto local = localDescription();
+	auto remote = remoteDescription();
+	return (local && local->hasMedia()) || (remote && remote->hasMedia());
+}
+
+void PeerConnection::sendMedia(const binary &packet) {
+	outgoingMedia(make_message(packet.begin(), packet.end(), Message::Binary));
+}
+
+void PeerConnection::send(const byte *packet, size_t size) {
+	outgoingMedia(make_message(packet, packet + size, Message::Binary));
+}
+
+void PeerConnection::onMedia(std::function<void(const binary &packet)> callback) {
+	mMediaCallback = callback;
+}
+
+void PeerConnection::outgoingMedia(message_ptr message) {
+	if (!hasMedia())
+		throw std::runtime_error("PeerConnection has no media support");
+
+	auto transport = std::atomic_load(&mDtlsTransport);
+	if (!transport)
+		throw std::runtime_error("PeerConnection is not open");
+
+	std::dynamic_pointer_cast<DtlsSrtpTransport>(transport)->send(message);
+}
+
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
 	try {
 		std::lock_guard lock(mInitMutex);
@@ -296,17 +325,24 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		};
 
 		shared_ptr<DtlsTransport> transport;
+		if (hasMedia()) {
 #if RTC_ENABLE_MEDIA
-		auto local = localDescription();
-		auto remote = remoteDescription();
-		if ((local && local->hasMedia()) || (remote && remote->hasMedia()))
+			PLOG_INFO << "This connection requires media support";
+
+			// DTLS-SRTP
 			transport = std::make_shared<DtlsSrtpTransport>(
 			    lower, mCertificate, verifierCallback,
 			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
-		else
+#else
+			PLOG_WARN << "Ignoring media support (not compiled with SRTP support)";
 #endif
+		}
+
+		if (!transport) {
+			// DTLS only
 			transport = std::make_shared<DtlsTransport>(lower, mCertificate, verifierCallback,
 			                                            stateChangeCallback);
+		}
 
 		std::atomic_store(&mDtlsTransport, transport);
 		return transport;
@@ -405,7 +441,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 }
 
 void PeerConnection::forwardMedia(message_ptr message) {
-	// TODO
+	if (message)
+		mMediaCallback(*message);
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
