@@ -113,7 +113,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
-	mMid = description.mid();
+	mMid = description.dataMid();
 	if (juice_set_remote_description(mAgent.get(), string(description).c_str()) < 0)
 		throw std::runtime_error("Failed to parse remote SDP");
 }
@@ -463,7 +463,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
-	mMid = description.mid();
+	mMid = description.dataMid();
 	mTrickleTimeout = description.trickleEnabled() ? 30s : 0s;
 
 	// Warning: libnice expects "\n" as end of line
