@@ -22,6 +22,10 @@
 #include "sctptransport.hpp"
 #include "tls.hpp"
 
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
+#endif
+
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
@@ -63,11 +67,17 @@ Init::Init() {
 
 	DtlsTransport::Init();
 	SctpTransport::Init();
+#if RTC_ENABLE_MEDIA
+	DtlsSrtpTransport::Init();
+#endif
 }
 
 Init::~Init() {
 	DtlsTransport::Cleanup();
 	SctpTransport::Cleanup();
+#if RTC_ENABLE_MEDIA
+	DtlsSrtpTransport::Cleanup();
+#endif
 
 #ifdef _WIN32
 	WSACleanup();

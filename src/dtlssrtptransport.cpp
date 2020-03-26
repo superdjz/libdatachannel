@@ -30,20 +30,9 @@ using std::to_string;
 
 namespace rtc {
 
-std::mutex DtlsSrtpTransport::GlobalMutex;
-int DtlsSrtpTransport::InstancesCount = 0;
+void DtlsSrtpTransport::Init() { srtp_init(); }
 
-void DtlsSrtpTransport::GlobalInit() {
-	std::lock_guard lock(GlobalMutex);
-	if (InstancesCount++ == 0)
-		srtp_init();
-}
-
-void DtlsSrtpTransport::GlobalCleanup() {
-	std::lock_guard lock(GlobalMutex);
-	if (--InstancesCount == 0)
-		srtp_shutdown();
-}
+void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
 DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate,
@@ -53,8 +42,6 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
     : DtlsTransport(lower, certificate, std::move(verifierCallback),
                     std::move(stateChangeCallback)),
       mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
-
-	GlobalInit();
 
 #if USE_GNUTLS
 	PLOG_DEBUG << "Initializing DTLS-SRTP transport (GnuTLS)";
@@ -71,8 +58,6 @@ DtlsSrtpTransport::~DtlsSrtpTransport() {
 	stop();
 
 	srtp_dealloc(mSrtp);
-
-	GlobalCleanup();
 }
 
 void DtlsSrtpTransport::stop() {
