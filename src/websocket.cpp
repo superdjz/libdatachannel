@@ -27,27 +27,15 @@
 
 #include <regex>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
-
 namespace rtc {
 
 WebSocket::WebSocket() {
-#ifdef _WIN32
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
-		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
-#endif
 }
 
 WebSocket::WebSocket(const string &url) : WebSocket() { open(url); }
 
 WebSocket::~WebSocket() {
 	remoteClose();
-#ifdef _WIN32
-	WSACleanup();
-#endif
 }
 
 WebSocket::State WebSocket::readyState() const { return mState; }
